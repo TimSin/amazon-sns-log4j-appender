@@ -6,6 +6,7 @@ import java.util.Arrays;
 import org.apache.log4j.AppenderSkeleton;
 import org.apache.log4j.helpers.LogLog;
 import org.apache.log4j.spi.LoggingEvent;
+import org.apache.log4j.spi.ThrowableInformation;
 
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.auth.BasicAWSCredentials;
@@ -80,23 +81,32 @@ public class SnsAsyncAppender extends AppenderSkeleton {
 
     @Override
     protected void append(LoggingEvent event) {
-        if (!checkEntryConditions()) {
-            return;
-        }
-
         String logMessage;
         if (layout != null) {
             logMessage = layout.format(event);
         } else {
             logMessage = event.getRenderedMessage();
         }
-        if (logMessage.getBytes().length > 64 * 1024) {
+
+        StringBuilder throwableInfoBuffer = new StringBuilder();
+        throwableInfoBuffer.append(logMessage);
+        ThrowableInformation info = event.getThrowableInformation();
+        for (int i = 0; i < info.getThrowableStrRep().length; i++) {
+            throwableInfoBuffer.append(info.getThrowableStrRep()[i]);
+        }
+
+        String message = throwableInfoBuffer.toString();
+        if (!checkEntryConditions()) {
+            return;
+        }
+
+        if (message.getBytes().length > 64 * 1024) {
             // SNS has a 64K limit on each published message.
-            logMessage = new String(Arrays.copyOf(logMessage.getBytes(), 64 * 1024));
+            logMessage = new String(Arrays.copyOf(message.getBytes(), 64 * 1024));
         }
 
         try {
-            sns.publishAsync(new PublishRequest(topicArn, logMessage, event.getLoggerName()
+            sns.publishAsync(new PublishRequest(topicArn, message, event.getLoggerName()
                     + " log: " + event.getLevel().toString()));
         } catch (AmazonClientException ase) {
             LogLog.error("Could not log to SNS", ase);
