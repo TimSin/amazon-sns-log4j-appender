@@ -92,13 +92,12 @@ public class SnsAsyncAppender extends AppenderSkeleton {
         throwableInfoBuffer.append(logMessage);
         ThrowableInformation info = event.getThrowableInformation();
 
-        try {
+        // Sometimes info can be null if an error is logged without an attached
+        // throwable (eg. logger.error("some string");)
+        if (info != null) {
             for (int i = 0; i < info.getThrowableStrRep().length; i++) {
                 throwableInfoBuffer.append(info.getThrowableStrRep()[i]);
             }
-        } catch (NullPointerException e) {
-            System.out.println("NPE thrown whilst logging exceotion in SNS appender");
-            e.printStackTrace();
         }
 
         String message = throwableInfoBuffer.toString();
