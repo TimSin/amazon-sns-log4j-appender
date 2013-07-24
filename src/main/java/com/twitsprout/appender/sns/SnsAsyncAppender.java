@@ -91,8 +91,14 @@ public class SnsAsyncAppender extends AppenderSkeleton {
         StringBuilder throwableInfoBuffer = new StringBuilder();
         throwableInfoBuffer.append(logMessage);
         ThrowableInformation info = event.getThrowableInformation();
-        for (int i = 0; i < info.getThrowableStrRep().length; i++) {
-            throwableInfoBuffer.append(info.getThrowableStrRep()[i]);
+
+        try {
+            for (int i = 0; i < info.getThrowableStrRep().length; i++) {
+                throwableInfoBuffer.append(info.getThrowableStrRep()[i]);
+            }
+        } catch (NullPointerException e) {
+            System.out.println("NPE thrown whilst logging exceotion in SNS appender");
+            e.printStackTrace();
         }
 
         String message = throwableInfoBuffer.toString();
@@ -106,8 +112,8 @@ public class SnsAsyncAppender extends AppenderSkeleton {
         }
 
         try {
-            sns.publishAsync(new PublishRequest(topicArn, message, event.getLoggerName()
-                    + " log: " + event.getLevel().toString()));
+            sns.publishAsync(new PublishRequest(topicArn, message, event.getLoggerName() + " log: "
+                    + event.getLevel().toString()));
         } catch (AmazonClientException ase) {
             LogLog.error("Could not log to SNS", ase);
         }
